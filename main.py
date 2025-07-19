@@ -1,5 +1,5 @@
 
-import os, requests
+import os, requests, asyncio
 from bs4 import BeautifulSoup
 from telegram import Bot
 
@@ -21,13 +21,13 @@ def fetch_new_listings():
             items.append(f"{title} — {price} — {time_text}\n{link}")
     return items
 
-def send_to_telegram(msgs):
+async def send_to_telegram(msgs):
     if not msgs:
-        bot.send_message(chat_id=CHAT_ID, text="🔔 今日無新土地物件上架。")
+        await bot.send_message(chat_id=CHAT_ID, text="🔔 今日無新土地物件上架。")
     else:
         text = "📅 今日新土地物件：\n\n" + "\n\n".join(msgs)
-        bot.send_message(chat_id=CHAT_ID, text=text)
+        await bot.send_message(chat_id=CHAT_ID, text=text)
 
 if __name__ == "__main__":
     listings = fetch_new_listings()
-    send_to_telegram(listings)
+    asyncio.run(send_to_telegram(listings))
