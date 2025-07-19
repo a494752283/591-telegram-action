@@ -23,6 +23,8 @@ def fetch_listings_by_region(region_id):
     url = f"https://land.591.com.tw/list?region={region_id}&type=1&kind=11"
     resp = requests.get(url, headers=HEADERS, verify=False)
     soup = BeautifulSoup(resp.text, "html.parser")
+    with open(f"log_{region_id}.html", "w", encoding="utf-8") as f:
+        f.write(soup.prettify())
     listings = []
     for card in soup.select(".property-list-item"):
         time_text = card.select_one(".infoContent .postDate").get_text(strip=True)
