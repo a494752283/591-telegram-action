@@ -25,13 +25,13 @@ def fetch_api(region_id):
     url = "https://bff.land.591.com.tw/v1/house/list"
     params = {
         "region": region_id,
-        "type": 1,   # 出租
-        "kind": 11,  # 土地
+        "type": 1,
+        "kind": 11,
         "is_format_data": 1,
         "firstRow": 0,
         "totalRows": 0
     }
-    resp = requests.get(url, headers=HEADERS, params=params)
+    resp = requests.get(url, headers=HEADERS, params=params, verify=False)  # 👈 關鍵修正
     if resp.status_code != 200:
         return []
     data = resp.json().get("data", {}).get("items", [])
@@ -42,7 +42,7 @@ def fetch_api(region_id):
         price = d.get("price", "")
         unit = d.get("priceUnit", "")
         link = f"https://rent.591.com.tw/rent-detail-{d.get('houseid')}.html"
-        if post_time and "分鐘" in post_time or "小時" in post_time or "今天" in post_time:
+        if post_time and ("分鐘" in post_time or "小時" in post_time or "今天" in post_time):
             new_items.append(f"{title} — {price}{unit} — {post_time}\n{link}")
     return new_items
 
@@ -55,7 +55,7 @@ async def send_to_telegram(region_map):
             if items:
                 messages.append(f"🏙️ {region}（{len(items)} 筆）:")
                 messages.extend(items)
-                messages.append("")  # 空行分隔
+                messages.append("")
         await bot.send_message(chat_id=CHAT_ID, text="\n".join(messages[:20]))
 
 if __name__ == "__main__":
