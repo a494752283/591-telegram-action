@@ -15,9 +15,13 @@ REGIONS = {
     "宜蘭縣": 21
 }
 
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+}
+
 def fetch_listings_by_region(region_id):
     url = f"https://land.591.com.tw/list?region={region_id}&type=1&kind=11"
-    resp = requests.get(url, verify=False)
+    resp = requests.get(url, headers=HEADERS, verify=False)
     soup = BeautifulSoup(resp.text, "html.parser")
     listings = []
     for card in soup.select(".property-list-item"):
@@ -39,7 +43,7 @@ async def send_to_telegram(region_map):
                 messages.append(f"🏙️ {region}（{len(items)} 筆）:")
                 messages.extend(items)
                 messages.append("")  # 空行分隔
-        await bot.send_message(chat_id=CHAT_ID, text="\n".join(messages[:20]))  # 限制 4096 字元
+        await bot.send_message(chat_id=CHAT_ID, text="\n".join(messages[:20]))
 
 if __name__ == "__main__":
     data = {name: fetch_listings_by_region(region_id) for name, region_id in REGIONS.items()}
