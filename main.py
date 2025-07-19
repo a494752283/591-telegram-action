@@ -1,6 +1,5 @@
 
 import os, requests, asyncio
-from bs4 import BeautifulSoup
 from telegram import Bot
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
@@ -16,30 +15,42 @@ REGIONS = {
 }
 
 HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
+    "User-Agent": "591land/1.0",
+    "Device": "pc",
+    "Origin": "https://land.591.com.tw",
+    "Referer": "https://land.591.com.tw",
 }
 
-def fetch_listings_by_region(region_id):
-    url = f"https://land.591.com.tw/list?region={region_id}&type=1&kind=11"
-    resp = requests.get(url, headers=HEADERS, verify=False)
-    soup = BeautifulSoup(resp.text, "html.parser")
-    with open(f"log_{region_id}.html", "w", encoding="utf-8") as f:
-        f.write(soup.prettify())
-    listings = []
-    for card in soup.select(".property-list-item"):
-        time_text = card.select_one(".infoContent .postDate").get_text(strip=True)
-        if any(day in time_text for day in ["今天", "小時前", "1天前", "2天前", "3天前", "4天前", "5天前", "6天前"]):
-            title = card.select_one(".infoContent h3").get_text(strip=True)
-            price = card.select_one(".price").get_text(strip=True)
-            link = "https://land.591.com.tw" + card.select_one("a")["href"]
-            listings.append(f"{title} — {price} — {time_text}\n{link}")
-    return listings
+def fetch_api(region_id):
+    url = "https://bff.land.591.com.tw/v1/house/list"
+    params = {
+        "region": region_id,
+        "type": 1,   # 出租
+        "kind": 11,  # 土地
+        "is_format_data": 1,
+        "firstRow": 0,
+        "totalRows": 0
+    }
+    resp = requests.get(url, headers=HEADERS, params=params)
+    if resp.status_code != 200:
+        return []
+    data = resp.json().get("data", {}).get("items", [])
+    new_items = []
+    for d in data:
+        post_time = d.get("ltime")
+        title = d.get("address", "")
+        price = d.get("price", "")
+        unit = d.get("priceUnit", "")
+        link = f"https://rent.591.com.tw/rent-detail-{d.get('houseid')}.html"
+        if post_time and "分鐘" in post_time or "小時" in post_time or "今天" in post_time:
+            new_items.append(f"{title} — {price}{unit} — {post_time}\n{link}")
+    return new_items
 
 async def send_to_telegram(region_map):
     if not any(region_map.values()):
-        await bot.send_message(chat_id=CHAT_ID, text="📅 近 7 天無新土地物件上架。")
+        await bot.send_message(chat_id=CHAT_ID, text="📅 今日無新土地物件上架。")
     else:
-        messages = ["📅 近 7 天土地物件彙整："]
+        messages = ["📅 今日新土地物件彙整："]
         for region, items in region_map.items():
             if items:
                 messages.append(f"🏙️ {region}（{len(items)} 筆）:")
@@ -48,5 +59,5 @@ async def send_to_telegram(region_map):
         await bot.send_message(chat_id=CHAT_ID, text="\n".join(messages[:20]))
 
 if __name__ == "__main__":
-    data = {name: fetch_listings_by_region(region_id) for name, region_id in REGIONS.items()}
-    asyncio.run(send_to_telegram(data))
+    all_data = {k: fetch_api(v) for k, v in REGIONS.items()}
+    asyncio.run(send_to_telegram(all_data))
